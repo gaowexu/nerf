@@ -6,7 +6,6 @@
 import os
 import torch
 import torch.nn.functional as F
-import numpy as np
 from nerf import NeRF
 import torch.optim as optim
 from data_loader import compile_data
@@ -95,8 +94,8 @@ class TrainTask(object):
 
         self._mse_loss = get_mse_loss
 
-    @staticmethod
     def decode(
+        self,
         color_rgb: torch.Tensor,
         sigma: torch.Tensor,
         depth: torch.Tensor,
@@ -125,7 +124,8 @@ class TrainTask(object):
 
         # dists.shape = (B, n_samples)
         dists = torch.cat(
-            [dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], dim=-1
+            [dists, torch.Tensor([1e10]).expand(dists[..., :1].shape).to(self._device)],
+            dim=-1,
         )
 
         # dists.shape = (B, n_samples)
@@ -149,7 +149,11 @@ class TrainTask(object):
             alpha
             * torch.cumprod(
                 torch.cat(
-                    [torch.ones((alpha.shape[0], 1)), 1.0 - alpha + 1e-10], dim=-1
+                    [
+                        torch.ones((alpha.shape[0], 1)).to(self._device),
+                        1.0 - alpha + 1e-10,
+                    ],
+                    dim=-1,
                 ),
                 dim=-1,
             )[:, :-1]
@@ -173,9 +177,8 @@ class TrainTask(object):
         return rgb_map, disp_map, acc_map, weights, depth_map
 
     # Hierarchical sampling (section 5.2)
-    @staticmethod
     def sample_pdf(
-        bins: torch.Tensor, weights: torch.Tensor, n_samples_fine: int, det=False
+        self, bins: torch.Tensor, weights: torch.Tensor, n_samples_fine: int, det=False
     ):
         """
         Probability Density Function (PDF) generation.
@@ -207,7 +210,7 @@ class TrainTask(object):
             )  # (B, n_samples_fine)
 
         # Invert CDF
-        u = u.contiguous()  # (B, n_samples_fine)
+        u = u.contiguous().to(self._device)  # (B, n_samples_fine)
         inds = torch.searchsorted(cdf, u, right=True)  # (B, n_samples_fine)
         below = torch.max(torch.zeros_like(inds - 1), inds - 1)  # (B, n_samples_fine)
         above = torch.min(
@@ -269,7 +272,7 @@ class TrainTask(object):
         near, far = bounds[..., 0], bounds[..., 1]
 
         # t_vals.shape = (n_samples_coarse, )
-        t_vals = torch.linspace(0.0, 1.0, steps=n_samples_coarse)
+        t_vals = torch.linspace(0.0, 1.0, steps=n_samples_coarse).to(self._device)
 
         # depth.shape = (B, n_samples_coarse), depth[i] equals depth[j] for i, j in {0, 1, ..., B-1}
         depth = near + (far - near) * t_vals  # sample linearly in depth.
@@ -280,7 +283,7 @@ class TrainTask(object):
             lower = torch.cat([depth[..., :1], mids], -1)  # (B, n_samples_coarse)
 
             # stratified samples in those intervals, t_rand.shape = (B, n_samples_coarse)
-            t_rand = torch.rand(depth.shape)
+            t_rand = torch.rand(depth.shape).to(self._device)
 
             # Now depth is with noise, its shape is (B, n_samples_coarse)
             depth = lower + (upper - lower) * t_rand
@@ -540,8 +543,8 @@ class TrainTask(object):
 def main():
     task = TrainTask(
         config={
-            "MaxEpochs": 10,
-            "BatchSize": 4096,
+            "MaxEpochs": 50,
+            "BatchSize": 1024,
             "InitialLearningRate": 0.0001,
             "TargetLearningRate": 0.001,
             "WarmupEpochs": 5,
