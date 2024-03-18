@@ -15,11 +15,11 @@ Think about it as “distilling” (蒸馏) or “compressing” the information
 
 Let’s look at the problem setup. The object that we want to render is located in the point $(0, 0, 0)$ (world coordinates). The object is placed in a 3D scene, which we will call the object space. A camera is fixed in the space at the position $\{x_c, y_c, z_c\}$. Since the camera is always “aimed” at the object, we only need two more rotation parameters to fully describe the pose: the inclination (倾角) and azimuth (方位角) angles $\{\gamma_c, \theta_c \}$. In the dataset, we have $n$ pairs of poses, together with the corresponding ground truth images.
 
-<img src="./imgs/coord.png" alt="drawing" width="300"/>
+<img src="./asset/coord.png" alt="drawing" width="300"/>
 
 In front of the camera, we place the image plane. Intuitively, the image plane is our “canvas”, this is where all the 3D information from the rays will be aggregated to render a 2D image (3D to 2D projection). The size of the image plane is $H \times W$.
 
-<img src="./imgs/step_1.png" alt="drawing" width="500"/>
+<img src="./asset/step_1.png" alt="drawing" width="500"/>
 
 
 Now, we “shoot” a bundle of rays from the camera, through every pixel of the image plane, resulting in $H \times W$ rays per pose.
@@ -32,7 +32,7 @@ Every ray is described by two vectors:
 
 Parametric equation $P = \textbf{v}_o + t * \textbf{v}_d$ defines any point on the ray. So to do the “ray marching”, we make the $t$ parameter larger (thus extending our rays) until a ray reaches some interesting location in the object space.
 
-<img src="./imgs/step_1_rays.png" alt="drawing" width="500"/>
+<img src="./asset/step_1_rays.png" alt="drawing" width="500"/>
 
 Now we are casting rays from every camera (observer), as is shown in figure above. This type of ray-tracing process described above is called backward tracing. This is because we follow the path of light rays from the camera to the object, rather than from the light source to the object.
 
@@ -50,7 +50,7 @@ In computer graphics, the 3D scene is very often modeled as a set of tiny, discr
 
 In our toy example, we sample uniformly along the ray (for every ray we sample $m$ points). But for better performance, authors use “hierarchical volume sampling” (分层体积采样) to allocate samples proportionally to their expected effect on the final rendering. For more details, refer to the original paper.
 
-<img src="./imgs/step_2.png" alt="drawing" width="500"/>
+<img src="./asset/step_2.png" alt="drawing" width="500"/>
 
 
 
@@ -70,7 +70,7 @@ Once we collect the query points for every ray, we are potentially ready to feed
 This observation is very important in the context of NeRF. The high-frequency features, such as colors, detailed geometry, and texture, make images perceptually sharp and vivid for the human eye. If our network is unable to represent those properties, the resulting The image may look bleak or over-smoothed. However, the way the network improves over time is similar to watching an object emerge from the fog. First, we see a general silhouette, its coarse outline, and dominant colors. Only later we might notice details, texture, and more fine-grained elements of an object.
 
 
-<img src="./imgs/step_3.png" alt="drawing" width="700"/>
+<img src="./asset/step_3.png" alt="drawing" width="700"/>
 
 
 
@@ -99,7 +99,7 @@ $$
 We feed the representation of query points into the NeRF network. The network returns the RGB value (tuple of three values in the range from 0 to 1) and volume density (a single, positive integer) for every point. This allows us to compute the volume density profile for every ray.
 
 
-<img src="./imgs/step_4.png" alt="drawing" width="500"/>
+<img src="./asset/step_4.png" alt="drawing" width="500"/>
 
 
 An example of density profile for a single ray. This profile comes from the trained network that learns to represent the yellow lego bulldozer. We can see that the ray initially "flies" through the space unoccupied by voxels (first five points). Then, once it hits some red voxel (I assume it is the red beacon on top of the vehicle), it starts "penetrating" the volume of the bulldozer's cabin (volume density takes non-zero values). Most of the voxels inside the object are yellow, orange, and brownish. Finally, the ray leaves the object (and volume density returns to approximately zero).
