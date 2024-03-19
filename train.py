@@ -457,16 +457,28 @@ class TrainTask(object):
         return response
 
     def save_model(self, epoch_index: int, batch_index: int):
-        self._fine_model.eval()
-        pth_model_full_path = os.path.join(
+        self._coarse_model.eval()
+        coarse_pth_model_full_path = os.path.join(
             self._models_root_dir,
-            "nerf_epoch_{}_batch_{}.pth".format(epoch_index, batch_index),
+            "nerf_coarse_epoch_{}_batch_{}.pth".format(epoch_index, batch_index),
+        )
+        torch.save(
+            self._coarse_model,
+            coarse_pth_model_full_path,
+        )
+        self._coarse_model.train()
+
+        self._fine_model.eval()
+        fine_pth_model_full_path = os.path.join(
+            self._models_root_dir,
+            "nerf_fine_epoch_{}_batch_{}.pth".format(epoch_index, batch_index),
         )
         torch.save(
             self._fine_model,
-            pth_model_full_path,
+            fine_pth_model_full_path,
         )
         self._fine_model.train()
+
         return
 
     def run(self):
@@ -506,7 +518,9 @@ class TrainTask(object):
                 depth_std = prediction["depth_std"]
 
                 # Step 3: Loss calculation.
-                mse_loss = self._mse_loss(rgb_map_fine, batch_target_rgb)
+                mse_loss = self._mse_loss(
+                    rgb_map_coarse, batch_target_rgb
+                ) + self._mse_loss(rgb_map_fine, batch_target_rgb)
                 psnr = get_psnr(mse=mse_loss)
 
                 print(

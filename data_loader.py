@@ -38,6 +38,9 @@ class NeRFDataset(Dataset):
         self._far = far
         self._enable_half_resolution = enable_half_resolution
 
+        self._images_amount = None
+        self._image_width = None
+        self._image_height = None
         (
             self._images,  # (N, H, W, C), C = 4 which indicates RGBA
             self._poses,  # (N, 4, 4)
@@ -89,6 +92,18 @@ class NeRFDataset(Dataset):
         print("Generating rays with shape {}".format(self._rays.shape))
         return
 
+    @property
+    def image_height(self):
+        return self._image_height
+
+    @property
+    def image_width(self):
+        return self._image_width
+
+    @property
+    def images_amount(self):
+        return self._images_amount
+
     def collect_samples(self):
         if self._phase == Phase.Training:
             json_path = os.path.join(self._root_data_dir, "transforms_train.json")
@@ -109,6 +124,8 @@ class NeRFDataset(Dataset):
             images.append(image)
             poses.append(np.array(frame["transform_matrix"]))
 
+        self._images_amount = len(images)
+
         # For lego dataset: images.shape = (N, H, W, C), C = 4 which indicates RGBA, poses.shape = (N, 4, 4).
         #
         # The data shape for each phase is:
@@ -119,6 +136,8 @@ class NeRFDataset(Dataset):
         poses = np.array(poses).astype(np.float32)
 
         image_raw_height, image_raw_width, image_raw_channels = images[0].shape
+        self._image_width = image_raw_width
+        self._image_height = image_raw_height
 
         # In lego dataset, camera_angle_x (unit: rad) is the horizontal field of view.
         # The following relationship holds for the camera:
@@ -133,6 +152,9 @@ class NeRFDataset(Dataset):
             resized_image_height = image_raw_height // 2
             resized_image_width = image_raw_width // 2
             focal_length = focal_length / 2.0
+
+            self._image_width = resized_image_width
+            self._image_height = resized_image_height
 
             resized_images = np.zeros(
                 shape=(
