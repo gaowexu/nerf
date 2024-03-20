@@ -45,39 +45,17 @@ class TrainTask(object):
         )
 
         self._batch_total_num = len(self._train_loader) * self._max_epochs
-        self._coarse_optimizer = optim.AdamW(
-            self._coarse_model.parameters(),
-            lr=self._target_lr,
-            weight_decay=0.01,
-            eps=1e-3,
-        )
-
-        self._fine_optimizer = optim.AdamW(
-            self._fine_model.parameters(),
+        self._optimizer = optim.AdamW(
+            params=list(self._coarse_model.parameters())
+            + list(self._fine_model.parameters()),
             lr=self._target_lr,
             weight_decay=0.01,
             eps=1e-3,
         )
 
         # Create learning rate scheduler
-        self._coarse_lr_scheduler = optim.lr_scheduler.LambdaLR(
-            optimizer=self._coarse_optimizer,
-            lr_lambda=lambda epoch: (
-                (
-                    (self._target_lr - self._initialized_lr)
-                    * epoch
-                    / self._warmup_epochs
-                    + self._initialized_lr
-                )
-                / self._target_lr
-                if epoch <= self._warmup_epochs
-                else self._div_factor
-                ** len([m for m in self._decay_steps if m <= epoch])
-            ),
-        )
-
-        self._fine_lr_scheduler = optim.lr_scheduler.LambdaLR(
-            optimizer=self._fine_optimizer,
+        self._lr_scheduler = optim.lr_scheduler.LambdaLR(
+            optimizer=self._optimizer,
             lr_lambda=lambda epoch: (
                 (
                     (self._target_lr - self._initialized_lr)
@@ -369,8 +347,8 @@ class TrainTask(object):
             )
 
             # Fine NeRF inference.
-            # color_rgb.shape = (B * n_samples_coarse, 3)
-            # sigma.shape = (B * n_samples_coarse, 1)
+            # color_rgb_fine.shape = (B * (n_samples_coarse + n_samples_fine), 3)
+            # sigma_fine.shape = (B * (n_samples_coarse + n_samples_fine), 1)
             color_rgb_fine, sigma_fine = self._fine_model(
                 torch.reshape(
                     points_for_refinement, shape=(-1, 3)
@@ -527,13 +505,12 @@ class TrainTask(object):
                 fine_psnr = get_psnr(mse=fine_mse_loss)
 
                 print(
-                    "Epoch {}/{}, Batch {}/{}: Learning Rate = {:.6f} / {:.6f}, MSE Loss = {:.6f}, Coarse PSNR = {:.6f}, Fine PSNR = {:.6f}".format(
+                    "Epoch {}/{}, Batch {}/{}: Learning Rate = {:.6f}, MSE Loss = {:.6f}, Coarse PSNR = {:.6f}, Fine PSNR = {:.6f}".format(
                         epoch_index + 1,
                         self._max_epochs,
                         batch_index + 1,
                         len(self._train_loader),
-                        self._coarse_optimizer.param_groups[0]["lr"],
-                        self._fine_optimizer.param_groups[0]["lr"],
+                        self._optimizer.param_groups[0]["lr"],
                         mse_loss.item(),
                         coarse_psnr.item(),
                         fine_psnr.item(),
@@ -541,21 +518,16 @@ class TrainTask(object):
                 )
 
                 # Step 4: Loss back-propagation.
-                self._coarse_optimizer.zero_grad()
-                self._fine_optimizer.zero_grad()
-
+                self._optimizer.zero_grad()
                 mse_loss.backward()
-
-                self._coarse_optimizer.step()
-                self._fine_optimizer.step()
+                self._optimizer.step()
 
                 # Step 5: Save model artifacts and weights.
                 if batch_index == len(self._train_loader) - 1:
                     self.save_model(epoch_index + 1, batch_index + 1)
 
             # Multi-stage lambda learning rate scheduler.
-            self._coarse_lr_scheduler.step()
-            self._fine_lr_scheduler.step()
+            self._lr_scheduler.step()
 
 
 def main():
