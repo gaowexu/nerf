@@ -17,8 +17,7 @@ class Predictor(object):
     def __init__(self, config: dict):
         self._config = config
 
-        self._batch_size = 1000
-        self._models_root_dir = self._config["ModelZooDir"]
+        self._batch_size = 500
         self._distance_min = self._config["MinDistance"]
         self._distance_max = self._config["MaxDistance"]
         self._n_samples_coarse = self._config["NOfCoarse"]
@@ -445,6 +444,9 @@ class Predictor(object):
             gt_images = torch.reshape(gt_images, shape=(-1, 3))
 
             for batch_index, data in enumerate(self._val_loader):
+                if batch_index > 1000:
+                    break
+
                 # Step 1: Parse data
                 #
                 # batch_rays_with_direction.shape = (B, 2, 3)
@@ -499,7 +501,6 @@ class Predictor(object):
 
                 print(
                     "Batch {}/{}: MSE Loss = {:.6f}, PSNR = {:.6f}".format(
-                        self._max_epochs,
                         batch_index + 1,
                         len(self._val_loader),
                         mse_loss.item(),
@@ -508,11 +509,31 @@ class Predictor(object):
                 )
 
         # Visualization
+        predicted_rendering_images = torch.reshape(
+            predicted_rendering_images,
+            shape=(
+                self._val_data.images_amount,
+                self._val_data.image_height,
+                self._val_data.image_width,
+                3,
+            ),
+        )
+        gt_images = torch.reshape(
+            gt_images,
+            shape=(
+                self._val_data.images_amount,
+                self._val_data.image_height,
+                self._val_data.image_width,
+                3,
+            ),
+        )
+
         predicted_rendering_images = predicted_rendering_images.detach().cpu().numpy()
         gt_images = gt_images.detach().cpu().numpy()
 
         for i in range(self._val_data.images_amount):
             plt.figure(figsize=(16, 8))
+
             plt.subplot(1, 2, 1)
             plt.imshow(predicted_rendering_images[i])
 
@@ -527,8 +548,8 @@ def main():
         config={
             "MinDistance": 2.0,
             "MaxDistance": 6.0,
-            "CoarseModelFullPath": "./runs/nerf_coarse_epoch_10_batch_15625.pth",
-            "FineModelFullPath": "./runs/nerf_fine_epoch_10_batch_15625.pth",
+            "CoarseModelFullPath": "./runs/nerf_coarse_epoch_49_batch_3200.pth",
+            "FineModelFullPath": "./runs/nerf_fine_epoch_49_batch_3200.pth",
             "NOfCoarse": 64,
             "Perturb": 1.0,
             "NOfFine": 128,

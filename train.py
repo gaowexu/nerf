@@ -518,13 +518,16 @@ class TrainTask(object):
                 depth_std = prediction["depth_std"]
 
                 # Step 3: Loss calculation.
-                mse_loss = self._mse_loss(
-                    rgb_map_coarse, batch_target_rgb
-                ) + self._mse_loss(rgb_map_fine, batch_target_rgb)
-                psnr = get_psnr(mse=mse_loss)
+                coarse_mse_loss = self._mse_loss(rgb_map_coarse, batch_target_rgb)
+                fine_mse_loss = self._mse_loss(rgb_map_fine, batch_target_rgb)
+
+                mse_loss = coarse_mse_loss + fine_mse_loss
+
+                coarse_psnr = get_psnr(mse=coarse_mse_loss)
+                fine_psnr = get_psnr(mse=fine_mse_loss)
 
                 print(
-                    "Epoch {}/{}, Batch {}/{}: Learning Rate = {:.6f} / {:.6f}, MSE Loss = {:.6f}, PSNR = {:.6f}".format(
+                    "Epoch {}/{}, Batch {}/{}: Learning Rate = {:.6f} / {:.6f}, MSE Loss = {:.6f}, Coarse PSNR = {:.6f}, Fine PSNR = {:.6f}".format(
                         epoch_index + 1,
                         self._max_epochs,
                         batch_index + 1,
@@ -532,7 +535,8 @@ class TrainTask(object):
                         self._coarse_optimizer.param_groups[0]["lr"],
                         self._fine_optimizer.param_groups[0]["lr"],
                         mse_loss.item(),
-                        psnr.item(),
+                        coarse_psnr.item(),
+                        fine_psnr.item(),
                     )
                 )
 
@@ -559,7 +563,7 @@ def main():
         config={
             "MaxEpochs": 50,
             "BatchSize": 1024,
-            "InitialLearningRate": 0.0001,
+            "InitialLearningRate": 0.001,
             "TargetLearningRate": 0.001,
             "WarmupEpochs": 5,
             "DivFactor": 0.10,
