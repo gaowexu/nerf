@@ -254,6 +254,7 @@ class TrainTask(object):
 
         # depth.shape = (B, n_samples_coarse), depth[i] equals depth[j] for i, j in {0, 1, ..., B-1}
         depth = near + (far - near) * t_vals  # sample linearly in depth.
+        depth = depth.expand([batch_size, n_samples_coarse])
 
         if perturb > 0.0:
             mids = 0.5 * (depth[..., 1:] + depth[..., :-1])  # (B, n_samples_coarse - 1)
