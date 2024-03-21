@@ -197,12 +197,47 @@ $$
 考虑到起点处边界条件 $\bm{I}(t_1) = \bm{I}_0 T(t_1) = \bm{I}_0 T(0) = \bm{I}_0$，可以进一步得到:
 
 $$
-\bm{I}(t_{N+1})  = \bm{I}_0 T(t_{N+1})  + \Sigma_{n=1}^{N} \sigma_{n} c_{n} \int_{t_{n}}^{t_{n+1}}T(t) dt \\
+\bm{I}(t_{N+1})  = \bm{I}_0 T(t_{N+1})  + \Sigma_{n=1}^{N} \sigma_{n} c_{n} \int_{t_{n}}^{t_{n+1}}T(t) dt \\ 
+$$
+
+上式中 $T(t) = e^ {-\int_0^{t} \sigma(u) du}$ 需要从起点开始计算，但可以拆分为两段，即:
+
+$$
+T(t) = e^ {-\int_0^{t} \sigma(u) du} =  e^ {-\int_0^{t_n} \sigma(u) du}  e^ {-\int_{t_n}^{t} \sigma(u) du}
+$$
+
+根据上式，可以得到:
+$$
+\sigma_{n} c_{n} \int_{t_{n}}^{t_{n+1}}T(t) dt = \sigma_{n} c_{n} \int_{t_{n}}^{t_{n+1}}e^ {-\int_0^{t_n} \sigma(u) du}  e^ {-\int_{t_n}^{t} \sigma(u) du} dt
+$$
+
+又有 $T(t_n) = e^ {-\int_0^{t_n} \sigma(u) du}$，因此有:
+$$
+\sigma_{n} c_{n} \int_{t_{n}}^{t_{n+1}}T(t) dt = \sigma_{n} c_{n} \int_{t_{n}}^{t_{n+1}}e^ {-\int_0^{t_n} \sigma(u) du}  e^ {-\int_{t_n}^{t} \sigma(u) du} dt \\ 
+= \sigma_{n} c_{n} T(t_n) \int_{t_{n}}^{t_{n+1}}e^ {-\int_{t_n}^{t} \sigma(u) du} dt \\
+= \sigma_{n} c_{n} T(t_n) \int_{t_{n}}^{t_{n+1}}e^ {-\int_{t_n}^{t} \sigma_n du} dt \\
+= \sigma_{n} c_{n} T(t_n) \int_{t_{n}}^{t_{n+1}}e^ {-\sigma_n (t-t_n)} dt \\
+= \sigma_{n} c_{n} T(t_n) e^{\sigma_n t_n} \int_{t_{n}}^{t_{n+1}}e^ {-\sigma_n t} dt \\
+= \sigma_{n} c_{n} T(t_n) e^{\sigma_n t_n} (\frac{1}{-\sigma_n} e ^{-\sigma_n t_{n+1}} - \frac{1}{-\sigma_n} e ^ {-\sigma_n t_n}) \\
+=  c_{n} T(t_n) e^{\sigma_n t_n} ( e ^ {-\sigma_n t_n} - e ^{-\sigma_n t_{n+1}}) \\
+= c_{n} T(t_n) ( 1 - e ^{-\sigma_n(t_{n+1} - t_n)})
 $$
 
 
+将上述公式代入到离散求和式中，可得:
+$$
+\bm{I}(s) = \bm{I}(t_{N+1})  = \bm{I}_0 T(t_{N+1})  + \Sigma_{n=1}^{N} c_{n} T(t_n) ( 1 - e ^{-\sigma_n(t_{n+1} - t_n)}) \\ 
+$$
 
+进一步令 $\delta_n = t_{n+1} - t_n$，其表示采样步长，则 $T(t_n)$ 也可以离散化为:
+$$
+T(t_n) = e^{-\int_0^{t_n}\sigma(u)du} = e^{-\sum_{k=1}^{n-1}\sigma_k \delta_k}
+$$
 
+代入上式，得到:
+$$
+\bm{I}(s) = \bm{I}(t_{N+1})  = \bm{I}_0 T(t_{N+1})  + \Sigma_{n=1}^{N} c_{n} T(t_n) ( 1 - e ^{-\sigma_n \delta_n}) 
+$$
 
-
+其中 $T(t_n) = e^{-\sum_{k=1}^{n-1}\sigma_k \delta_k}$ 对应着NeRF论文中的 $T_i$，值得注意的是 NeRF 论文中忽略了 背景光项 $\bm{I}_0 T(t_{N+1})$，这说明 NeRF 中的体渲染不考虑透射和外散射，所有的光线都是物体表面发出的。即 NeRF 的使用场景中不存在透明物体，直觉上讲还是很合理的，因为体渲染原本用于渲染云雾，NeRF 虽然用了体渲染但是却用来渲染物体表面，这个场景下光线就是来自物体表面。
 

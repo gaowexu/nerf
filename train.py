@@ -419,11 +419,14 @@ class TrainTask(object):
         rays_d_normalized = rays_d_normalized / torch.norm(
             rays_d_normalized, dim=-1, keepdim=True
         )
+        rays_d_normalized = rays_d_normalized.float()
 
-        near = near * torch.ones_like(rays_d[..., :1])  # near.shape = (B, 1)
-        far = far * torch.ones_like(rays_d[..., :1])  # far.shape = (B, 1)
+        near_tensor = near * torch.ones_like(
+            rays_d[..., :1]
+        )  # near_tensor.shape = (B, 1)
+        far_tensor = far * torch.ones_like(rays_d[..., :1])  # far_tensor.shape = (B, 1)
         rays = torch.cat(
-            [rays_o, rays_d, near, far, rays_d_normalized], dim=-1
+            [rays_o, rays_d, near_tensor, far_tensor, rays_d_normalized], dim=-1
         )  # rays.shape = (B, 11)
 
         response = self.render_rays(
@@ -497,6 +500,8 @@ class TrainTask(object):
                 depth_std = prediction["depth_std"]
 
                 # Step 3: Loss calculation.
+                self._optimizer.zero_grad()
+
                 coarse_mse_loss = self._mse_loss(rgb_map_coarse, batch_target_rgb)
                 fine_mse_loss = self._mse_loss(rgb_map_fine, batch_target_rgb)
 
@@ -519,7 +524,6 @@ class TrainTask(object):
                 )
 
                 # Step 4: Loss back-propagation.
-                self._optimizer.zero_grad()
                 mse_loss.backward()
                 self._optimizer.step()
 
@@ -535,7 +539,7 @@ def main():
     task = TrainTask(
         config={
             "MaxEpochs": 50,
-            "BatchSize": 1024,
+            "BatchSize": 1600,
             "InitialLearningRate": 0.001,
             "TargetLearningRate": 0.001,
             "WarmupEpochs": 5,
