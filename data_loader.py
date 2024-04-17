@@ -298,53 +298,6 @@ class NeRFDataset(Dataset):
 
         return render_poses  # shape = (40, 4, 4)
 
-    # def visualize_camera_poses(self):
-    #     dirs = np.stack(
-    #         [np.sum([0, 0, -1] * pose[:3, :3], axis=-1) for pose in self._poses]
-    #     )  # 只要第三列, 并把方向逆一下
-    #     origins = self._poses[:, :3, -1]  # 选前三行, 最后一列
-
-    #     ax = plt.figure(figsize=(12, 8)).add_subplot(projection="3d")
-    #     _ = ax.quiver(
-    #         origins[..., 0].flatten(),
-    #         origins[..., 1].flatten(),
-    #         origins[..., 2].flatten(),
-    #         dirs[..., 0].flatten(),
-    #         dirs[..., 1].flatten(),
-    #         dirs[..., 2].flatten(),
-    #         length=0.5,
-    #         normalize=True,
-    #     )
-
-    #     ax.set_xlabel("X")
-    #     ax.set_ylabel("Y")
-    #     ax.set_zlabel("z")
-
-    #     plt.show()
-
-    # def visualize_camera_rays(self):
-    #     ax = plt.figure(figsize=(12, 8)).add_subplot(projection="3d")
-    #     pose_id = 90
-    #     _ = ax.quiver(
-    #         ray_origin.cpu()[::20, ::20, 0],
-    #         ray_origin.cpu()[::20, ::20, 1],
-    #         ray_origin.cpu()[::20, ::20, 2],
-    #         ray_direction.cpu()[::20, ::20, 0],
-    #         ray_direction.cpu()[::20, ::20, 1],
-    #         ray_direction.cpu()[::20, ::20, 2],
-    #         length=3,
-    #         normalize=True,
-    #         arrow_length_ratio=0.05,
-    #     )
-    #     ax.set_xlabel("X")
-    #     ax.set_ylabel("Y")
-    #     ax.set_zlabel("Z")
-    #     ax.set_xlim3d([-2, 2])
-    #     ax.set_ylim3d([-2, 2])
-    #     ax.set_zlim3d([0, 2])
-
-    #     plt.show()
-
     def __len__(self):
         return self._rays.shape[0]
 

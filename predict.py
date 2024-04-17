@@ -17,7 +17,7 @@ class Predictor(object):
     def __init__(self, config: dict):
         self._config = config
 
-        self._batch_size = 500
+        self._batch_size = 5000
         self._distance_min = self._config["MinDistance"]
         self._distance_max = self._config["MaxDistance"]
         self._n_samples_coarse = self._config["NOfCoarse"]
@@ -444,7 +444,7 @@ class Predictor(object):
             gt_images = torch.reshape(gt_images, shape=(-1, 3))
 
             for batch_index, data in enumerate(self._val_loader):
-                if batch_index > 1000:
+                if batch_index > 200:
                     break
 
                 # Step 1: Parse data
@@ -494,17 +494,19 @@ class Predictor(object):
                 ] = batch_target_rgb
 
                 # Step 3: Loss calculation.
-                mse_loss = self._mse_loss(
-                    rgb_map_coarse, batch_target_rgb
-                ) + self._mse_loss(rgb_map_fine, batch_target_rgb)
-                psnr = get_psnr(mse=mse_loss)
+                coarse_mse_loss = self._mse_loss(rgb_map_coarse, batch_target_rgb)
+                fine_mse_loss = self._mse_loss(rgb_map_fine, batch_target_rgb)
+                coarse_psnr = get_psnr(mse=coarse_mse_loss)
+                fine_psnr = get_psnr(mse=fine_mse_loss)
 
                 print(
-                    "Batch {}/{}: MSE Loss = {:.6f}, PSNR = {:.6f}".format(
+                    "Batch {}/{}: Coarse MSE Loss = {:.6f}, Fine MSE Loss = {:.6f}, Coarse PSNR = {:.6f}, Fine PSNR = {:.6f}".format(
                         batch_index + 1,
                         len(self._val_loader),
-                        mse_loss.item(),
-                        psnr.item(),
+                        coarse_mse_loss.item(),
+                        fine_mse_loss.item(),
+                        coarse_psnr.item(),
+                        fine_psnr.item(),
                     )
                 )
 
@@ -548,8 +550,8 @@ def main():
         config={
             "MinDistance": 2.0,
             "MaxDistance": 6.0,
-            "CoarseModelFullPath": "./runs/nerf_coarse_epoch_49_batch_3200.pth",
-            "FineModelFullPath": "./runs/nerf_fine_epoch_49_batch_3200.pth",
+            "CoarseModelFullPath": "./runs/nerf_coarse_epoch_24_batch_10000.pth",
+            "FineModelFullPath": "./runs/nerf_fine_epoch_24_batch_10000.pth",
             "NOfCoarse": 64,
             "Perturb": 1.0,
             "NOfFine": 128,
